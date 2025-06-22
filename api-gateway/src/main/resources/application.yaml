@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+
+keycloak-client:
+  server-url: http://localhost:8080 # Base URL of Keycloak
+  realm: bootlabs  # Realm name in Keycloak
+  client-id: gateway-labs # Client registered in that realm
+  client-secret: Yoqb9MsXvDGSxxOtqzTXLC8OYmrPmXXy # Client secret (for confidential clients)
+
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      default-filters: #(1)
+        - TokenRelay=
+      routes: #(2)
+        - id: resource-server
+          uri: ${RESOURCE_SERVER_URI:http://localhost:8082}
+          predicates:
+            - Path=/resource/**
+          filters:
+            - StripPrefix=1
+
+  security: #(3)
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ${keycloak-client.client-id}
+            client-secret: ${keycloak-client.client-secret}
+            redirect-uri: ${OAUTH2_REDIRECT_URI:{baseUrl}/login/oauth2/code/keycloak}
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            issuer-uri: ${keycloak-client.server-url}/realms/${keycloak-client.realm}
+            user-name-attribute: preferred_username
+
+logging:
+  level:
+    root: INFO
+    com.bootlabs.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: TRACE
